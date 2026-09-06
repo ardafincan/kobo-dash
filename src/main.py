@@ -53,7 +53,7 @@ def run(cfg: config.Config, preview: bool) -> None:
 
     # Fetch every source. None of these raise; each returns ok/fail.
     w = weather.fetch(cfg.latitude, cfg.longitude, cfg.timezone)
-    c = calendar.fetch(cfg.ics_url, cfg.timezone)
+    c = calendar.fetch_days(cfg.ics_url, cfg.timezone, num_days=3)
     hnews = hn.fetch()
     q = quotes.fetch(now.date())
 

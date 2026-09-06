@@ -36,6 +36,13 @@ class Event:
         return (1, self.start.hour * 60 + self.start.minute)
 
 
+@dataclass(frozen=True)
+class DayAgenda:
+    date: date
+    label: str          # "Today", "Tomorrow", or "Wed 9 Sep"
+    events: list[Event]
+
+
 def _as_datetime(value, tz: ZoneInfo) -> tuple[bool, datetime]:
     """Normalise a DTSTART/DTEND value to (is_all_day, tz-aware datetime)."""
     if isinstance(value, datetime):
@@ -107,24 +114,55 @@ def _occurrences_today(comp, tz: ZoneInfo, day_start: datetime, day_end: datetim
             yield (all_day, start_dt)
 
 
+def _collect(vevents, tz: ZoneInfo, day: date) -> list[Event]:
+    """All events overlapping a single local day, sorted."""
+    day_start = datetime.combine(day, time.min, tzinfo=tz)
+    day_end = day_start + timedelta(days=1)
+    events: list[Event] = []
+    for comp in vevents:
+        title = str(comp.get("SUMMARY", "(no title)")).strip() or "(no title)"
+        for all_day, occ in _occurrences_today(comp, tz, day_start, day_end):
+            events.append(Event(all_day=all_day, start=None if all_day else occ, title=title))
+    events.sort(key=lambda e: e.sort_key)
+    return events
+
+
+def _day_label(d: date, today: date) -> str:
+    if d == today:
+        return "Today"
+    if d == today + timedelta(days=1):
+        return "Tomorrow"
+    return f"{d:%a} {d.day} {d:%b}"
+
+
 def fetch(ics_url: str, timezone: str, today: date | None = None) -> Result[list[Event]]:
+    """Events for a single day (kept for callers that only need today)."""
     try:
         tz = ZoneInfo(timezone)
         today = today or datetime.now(tz).date()
-        day_start = datetime.combine(today, time.min, tzinfo=tz)
-        day_end = day_start + timedelta(days=1)
-
         r = requests.get(ics_url, timeout=TIMEOUT)
         r.raise_for_status()
-        cal = Calendar.from_ical(r.content)
+        vevents = list(Calendar.from_ical(r.content).walk("VEVENT"))
+        return Result.good(_collect(vevents, tz, today))
+    except Exception as e:  # noqa: BLE001 — never raise to caller
+        return Result.fail(f"calendar: {type(e).__name__}: {e}")
 
-        events: list[Event] = []
-        for comp in cal.walk("VEVENT"):
-            title = str(comp.get("SUMMARY", "(no title)")).strip() or "(no title)"
-            for all_day, occ in _occurrences_today(comp, tz, day_start, day_end):
-                events.append(Event(all_day=all_day, start=None if all_day else occ, title=title))
 
-        events.sort(key=lambda e: e.sort_key)
-        return Result.good(events)
+def fetch_days(ics_url: str, timezone: str, num_days: int = 3,
+               today: date | None = None) -> Result[list[DayAgenda]]:
+    """Per-day agendas for today and the following days. One network fetch."""
+    try:
+        tz = ZoneInfo(timezone)
+        today = today or datetime.now(tz).date()
+        r = requests.get(ics_url, timeout=TIMEOUT)
+        r.raise_for_status()
+        vevents = list(Calendar.from_ical(r.content).walk("VEVENT"))
+
+        days = []
+        for i in range(num_days):
+            d = today + timedelta(days=i)
+            days.append(DayAgenda(date=d, label=_day_label(d, today),
+                                  events=_collect(vevents, tz, d)))
+        return Result.good(days)
     except Exception as e:  # noqa: BLE001 — never raise to caller
         return Result.fail(f"calendar: {type(e).__name__}: {e}")

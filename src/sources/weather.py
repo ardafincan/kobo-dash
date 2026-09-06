@@ -39,12 +39,22 @@ class DayForecast:
 
 
 @dataclass(frozen=True)
+class HourForecast:
+    label: str          # e.g. "15:00"
+    temp: int
+    condition: str
+
+
+@dataclass(frozen=True)
 class Weather:
     temp: int           # current temperature, rounded
     condition: str      # current condition name
     today_hi: int
     today_lo: int
-    forecast: list[DayForecast]   # next days (excludes today)
+    sunrise: str        # "HH:MM" local
+    sunset: str         # "HH:MM" local
+    forecast: list[DayForecast]    # next days (excludes today)
+    hourly: list[HourForecast]     # upcoming hours (from the next hour)
 
 
 _WEEKDAY = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
@@ -58,12 +68,24 @@ def _weekday_label(iso_date: str) -> str:
     return _WEEKDAY[date(y, m, d).weekday()]
 
 
+HOURLY_COUNT = 6   # upcoming hours shown on the day screen
+
+
+def _hhmm(iso: str) -> str:
+    # Open-Meteo gives local ISO like "2026-09-06T06:32"; take the HH:MM.
+    return iso.split("T")[1][:5] if "T" in iso else iso
+
+
 def fetch(latitude: float, longitude: float, timezone: str) -> Result[Weather]:
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
     params = {
         "latitude": latitude,
         "longitude": longitude,
         "current": "temperature_2m,weather_code",
-        "daily": "temperature_2m_max,temperature_2m_min,weather_code",
+        "hourly": "temperature_2m,weather_code",
+        "daily": "temperature_2m_max,temperature_2m_min,weather_code,sunrise,sunset",
         "timezone": timezone,
     }
     try:
@@ -88,13 +110,36 @@ def fetch(latitude: float, longitude: float, timezone: str) -> Result[Weather]:
             for i in range(1, min(4, len(dates)))   # next 3 days, skip today
         ]
 
+        # Upcoming hours: start from the first hour strictly after now (local).
+        now = datetime.now(ZoneInfo(timezone)).replace(tzinfo=None)
+        hourly_raw = data.get("hourly", {})
+        htimes = hourly_raw.get("time", [])
+        htemps = hourly_raw.get("temperature_2m", [])
+        hcodes = hourly_raw.get("weather_code", [])
+        hourly: list[HourForecast] = []
+        for i, t in enumerate(htimes):
+            if datetime.fromisoformat(t) <= now:
+                continue
+            hourly.append(
+                HourForecast(
+                    label=_hhmm(t),
+                    temp=round(htemps[i]),
+                    condition=condition_from_code(int(hcodes[i])),
+                )
+            )
+            if len(hourly) >= HOURLY_COUNT:
+                break
+
         return Result.good(
             Weather(
                 temp=round(cur["temperature_2m"]),
                 condition=condition_from_code(int(cur["weather_code"])),
                 today_hi=round(highs[0]),
                 today_lo=round(lows[0]),
+                sunrise=_hhmm(daily["sunrise"][0]),
+                sunset=_hhmm(daily["sunset"][0]),
                 forecast=forecast,
+                hourly=hourly,
             )
         )
     except Exception as e:  # noqa: BLE001 — never raise to caller

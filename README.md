@@ -7,8 +7,9 @@ server.** Phase 2 (the device) is a guided manual procedure — see `INSTRUCTION
 
 ## Screens
 
-- **day** — weather (fixed left column) + today's calendar agenda (right column),
-  with a last-updated timestamp bottom-right.
+- **day** — weather (fixed left column: current temp + glyph, condition, hi/lo,
+  sunrise/sunset, 3-day forecast, and an hourly strip) + a 3-day calendar agenda
+  (right column, grouped by day), with a last-updated timestamp bottom-right.
 - **news** — Hacker News top 5, headlines only, five fixed-height slots.
 - **quote** — one quote of the day, large and centred, from `quotes.json`.
 
