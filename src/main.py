@@ -39,7 +39,8 @@ def _write_manifest(cfg: config.Config, generated_at: str) -> None:
 
     manifest = {
         "hash": h.hexdigest(),
-        "sequence": cfg.sequence,
+        # Each entry is "screen:seconds" so the device knows how long to show it.
+        "sequence": [f"{screen}:{seconds}" for screen, seconds in cfg.slots],
         "generated_at": generated_at,
     }
     tmp = OUT_DIR / "manifest.json.tmp"

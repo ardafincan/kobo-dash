@@ -36,7 +36,7 @@ class Config:
     longitude: float
     timezone: str
     rotate: int
-    sequence: list[str]
+    slots: list[tuple[str, int]]   # (screen, display seconds) in rotation order
     host: str
     port: int
     # Daily Gemini quote (optional; falls back to local quotes.json).
@@ -74,15 +74,29 @@ def load(path: Path | None = None) -> Config:
     if rotate not in (90, 270):
         raise ConfigError(f"display.rotate must be 90 or 270, got {rotate}")
 
-    sequence = _require(raw, "display.sequence")
-    if not isinstance(sequence, list) or not sequence:
+    raw_seq = _require(raw, "display.sequence")
+    if not isinstance(raw_seq, list) or not raw_seq:
         raise ConfigError("display.sequence must be a non-empty list")
     allowed = {"day.png", "news.png", "quote.png"}
-    bad = [s for s in sequence if s not in allowed]
-    if bad:
-        raise ConfigError(
-            f"display.sequence contains unknown screens {bad}; allowed: {sorted(allowed)}"
-        )
+    default_minutes = raw.get("display", {}).get("default_minutes", 5)
+    slots: list[tuple[str, int]] = []
+    for item in raw_seq:
+        # Each item is either "day.png" (uses default_minutes) or
+        # { screen = "day.png", minutes = 15 }.
+        if isinstance(item, str):
+            screen, minutes = item, default_minutes
+        elif isinstance(item, dict) and "screen" in item:
+            screen, minutes = item["screen"], item.get("minutes", default_minutes)
+        else:
+            raise ConfigError(f"display.sequence item is invalid: {item!r}")
+        if screen not in allowed:
+            raise ConfigError(
+                f"display.sequence has unknown screen {screen!r}; allowed: {sorted(allowed)}"
+            )
+        seconds = int(float(minutes) * 60)
+        if seconds <= 0:
+            raise ConfigError(f"display.sequence minutes must be > 0 (screen {screen!r})")
+        slots.append((screen, seconds))
 
     quote = raw.get("quote") if isinstance(raw.get("quote"), dict) else {}
     quote_use_gemini = bool(quote.get("use_gemini", False))
@@ -102,7 +116,7 @@ def load(path: Path | None = None) -> Config:
         longitude=float(_require(raw, "location.longitude")),
         timezone=str(_require(raw, "location.timezone")),
         rotate=rotate,
-        sequence=list(sequence),
+        slots=slots,
         host=str(_require(raw, "server.host")),
         port=int(_require(raw, "server.port")),
         quote_use_gemini=quote_use_gemini,
@@ -126,7 +140,7 @@ if __name__ == "__main__":
     print("config OK:")
     print(f"  location : {cfg.latitude}, {cfg.longitude} ({cfg.timezone})")
     print(f"  rotate   : {cfg.rotate}")
-    print(f"  sequence : {cfg.sequence}")
+    print("  sequence :", ", ".join(f"{s}({sec // 60}m)" for s, sec in cfg.slots))
     print(f"  server   : {cfg.host}:{cfg.port}")
     if cfg.quote_use_gemini:
         key = "set" if cfg.gemini_api_key else "MISSING (will fall back to local)"

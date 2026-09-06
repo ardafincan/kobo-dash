@@ -76,13 +76,14 @@ parse_and_fetch() {
     flat=$(tr -d '\n\r' < "$SCREENS/manifest.json")
     newhash=$(printf '%s' "$flat" | sed 's/.*"hash"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/')
     seqline=$(printf '%s' "$flat" | sed 's/.*"sequence"[[:space:]]*:[[:space:]]*\[\([^]]*\)\].*/\1/')
-    printf '%s' "$seqline" | tr ',' '\n' | sed 's/[" ]//g' | grep -E '\.png$' > "$SCREENS/seq.list"
+    # Entries look like "day.png:900" (screen:seconds). Keep them verbatim.
+    printf '%s' "$seqline" | tr ',' '\n' | sed 's/[" ]//g' | grep -E '\.png' > "$SCREENS/seq.list"
     log "sequence: $(tr '\n' ' ' < "$SCREENS/seq.list")"
 
     oldhash=$(cat "$SCREENS/.hash" 2>/dev/null)
     if [ "$newhash" != "$oldhash" ]; then
         log "hash changed; downloading images"
-        for png in $(sort -u "$SCREENS/seq.list"); do
+        for png in $(sed 's/:.*//' "$SCREENS/seq.list" | sort -u); do
             if wget -q -T 8 -O "$SCREENS/$png.tmp" "$SERVER/$png" 2>/dev/null; then
                 mv "$SCREENS/$png.tmp" "$SCREENS/$png"
                 log "fetched $png"
@@ -120,13 +121,20 @@ while true; do
         last_fetch=$(date +%s)
     fi
 
+    nap="$DISPLAY_INTERVAL"
     if [ -s "$SCREENS/seq.list" ]; then
         count=$(wc -l < "$SCREENS/seq.list")
-        item=$(sed -n "$(( idx % count + 1 ))p" "$SCREENS/seq.list")
+        entry=$(sed -n "$(( idx % count + 1 ))p" "$SCREENS/seq.list")
+        item="${entry%%:*}"          # screen name
+        secs="${entry##*:}"          # per-slot seconds
+        case "$secs" in
+            ''|*[!0-9]*) secs="$DISPLAY_INTERVAL" ;;   # no/invalid duration -> default
+        esac
+        nap="$secs"
         if [ -f "$SCREENS/$item" ]; then
             "$FB" -f -c -g file="$SCREENS/$item" >/dev/null 2>&1
             bat=$(cat /sys/class/power_supply/battery/capacity 2>/dev/null)
-            log "drew $item (battery ${bat}%)"
+            log "drew $item for ${secs}s (battery ${bat}%)"
         else
             log "missing $item; skip"
         fi
@@ -136,5 +144,5 @@ while true; do
     fi
 
     echo 0 > /sys/class/leds/GLED/brightness 2>/dev/null
-    sleep "$DISPLAY_INTERVAL"
+    sleep "$nap"
 done

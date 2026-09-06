@@ -22,7 +22,15 @@ rotate = 90
 
 # The display rotation. The DEVICE reads this from manifest.json, so changing
 # it here (then re-rendering) needs no redeploy to the reader. Slots may repeat.
-sequence = ["day.png", "news.png", "day.png", "quote.png"]
+# Each slot is either a bare name (uses default_minutes) or gives its own
+# duration: { screen = "day.png", minutes = 15 }.
+default_minutes = 5
+sequence = [
+  { screen = "day.png",   minutes = 15 },
+  { screen = "news.png",  minutes = 3 },
+  { screen = "day.png",   minutes = 15 },
+  { screen = "quote.png", minutes = 3 },
+]
 
 [server]
 # LAN IP of the Mac Mini that serves out/ and runs the render timer.
