@@ -110,8 +110,11 @@ def weather_glyph(draw, cx: int, cy: int, size: int, condition: str, fill: int =
             [left, ccy - h // 6, ccx + cw // 2, base_y],
             radius=h // 3, outline=fill, width=lw,
         )
-        draw.ellipse([left, ccy - h // 3, left + h, ccy - h // 3 + h], outline=fill, width=lw)
-        draw.ellipse([ccx - h // 2, ccy - h // 2, ccx + h // 2, ccy - h // 2 + h],
+        # Left bump: smaller, resting on the base line so it doesn't dip below.
+        left_d = int(h * 0.8)
+        draw.ellipse([left, base_y - left_d, left + left_d, base_y], outline=fill, width=lw)
+        # Center bump: larger, also bottoming out exactly on the base line.
+        draw.ellipse([ccx - h // 2, base_y - h, ccx + h // 2, base_y],
                      outline=fill, width=lw)
         return base_y
 
