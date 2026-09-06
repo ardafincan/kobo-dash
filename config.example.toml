@@ -28,3 +28,15 @@ sequence = ["day.png", "news.png", "day.png", "quote.png"]
 # LAN IP of the Mac Mini that serves out/ and runs the render timer.
 host = "192.168.1.2"
 port = 8080
+
+[quote]
+# The quote screen defaults to the local quotes.json (deterministic by date).
+# Optionally ask Google Gemini once per day for a real, attributed quote. The
+# result is cached to quote_cache.json (one API call per day); on ANY failure it
+# falls back to quotes.json, so the screen never blanks.
+use_gemini = false
+# Get a key from https://aistudio.google.com/apikey . Treat it as a password.
+gemini_api_key = ""
+gemini_model = "gemini-2.5-flash"
+# Optional. Leave unset to use the built-in prompt. {date} is filled in.
+# prompt = "Give me one real, accurately attributed quotation ... for {date}."

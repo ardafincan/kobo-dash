@@ -15,6 +15,20 @@ class ConfigError(Exception):
     pass
 
 
+# Default prompt for the daily Gemini quote. {date} is filled in at runtime to
+# nudge day-to-day variation. The schema (see sources/gemini.py) forces a
+# {text, author} JSON object, so the prompt only needs to shape the content.
+DEFAULT_QUOTE_PROMPT = (
+    "Give me one inspiring or thought-provoking quotation that was genuinely "
+    "said or written by a real, identifiable person — historical or "
+    "contemporary. It must be a real, accurately attributed quote: do not "
+    "invent quotations or attributions, and only include it if you are "
+    "confident the wording and the author are correct. Prefer something that is "
+    "not an overused cliche. Keep it under 200 characters. Vary your choice for "
+    "the date {date}."
+)
+
+
 @dataclass(frozen=True)
 class Config:
     ics_url: str
@@ -25,6 +39,11 @@ class Config:
     sequence: list[str]
     host: str
     port: int
+    # Daily Gemini quote (optional; falls back to local quotes.json).
+    quote_use_gemini: bool
+    gemini_api_key: str
+    gemini_model: str
+    quote_prompt: str
 
 
 def _require(d: dict, path: str):
@@ -60,6 +79,12 @@ def load(path: Path | None = None) -> Config:
             f"display.sequence contains unknown screens {bad}; allowed: {sorted(allowed)}"
         )
 
+    quote = raw.get("quote") if isinstance(raw.get("quote"), dict) else {}
+    quote_use_gemini = bool(quote.get("use_gemini", False))
+    gemini_api_key = str(quote.get("gemini_api_key", "")).strip()
+    gemini_model = str(quote.get("gemini_model", "gemini-2.5-flash")).strip()
+    quote_prompt = str(quote.get("prompt", DEFAULT_QUOTE_PROMPT))
+
     return Config(
         ics_url=str(_require(raw, "calendar.ics_url")),
         latitude=float(_require(raw, "location.latitude")),
@@ -69,6 +94,10 @@ def load(path: Path | None = None) -> Config:
         sequence=list(sequence),
         host=str(_require(raw, "server.host")),
         port=int(_require(raw, "server.port")),
+        quote_use_gemini=quote_use_gemini,
+        gemini_api_key=gemini_api_key,
+        gemini_model=gemini_model,
+        quote_prompt=quote_prompt,
     )
 
 
@@ -84,3 +113,8 @@ if __name__ == "__main__":
     print(f"  rotate   : {cfg.rotate}")
     print(f"  sequence : {cfg.sequence}")
     print(f"  server   : {cfg.host}:{cfg.port}")
+    if cfg.quote_use_gemini:
+        key = "set" if cfg.gemini_api_key else "MISSING (will fall back to local)"
+        print(f"  quote    : gemini {cfg.gemini_model} (key {key})")
+    else:
+        print("  quote    : local quotes.json")

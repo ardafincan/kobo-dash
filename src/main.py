@@ -55,13 +55,19 @@ def run(cfg: config.Config, preview: bool) -> None:
     w = weather.fetch(cfg.latitude, cfg.longitude, cfg.timezone)
     c = calendar.fetch_days(cfg.ics_url, cfg.timezone, num_days=3)
     hnews = hn.fetch()
-    q = quotes.fetch(now.date())
+    q, q_source = quotes.quote_of_day(
+        now.date(),
+        use_gemini=cfg.quote_use_gemini,
+        api_key=cfg.gemini_api_key,
+        model=cfg.gemini_model,
+        prompt=cfg.quote_prompt,
+    )
 
     print("sources:")
     print(_status("weather", w))
     print(_status("calendar", c))
     print(_status("hn", hnews))
-    print(_status("quotes", q))
+    print(_status("quotes", q) + f"  [{q_source}]")
 
     images = {
         "day.png": day.render_screen(w, c, now),

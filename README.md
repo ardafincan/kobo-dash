@@ -11,7 +11,9 @@ server.** Phase 2 (the device) is a guided manual procedure — see `INSTRUCTION
   sunrise/sunset, 3-day forecast, and an hourly strip) + a 3-day calendar agenda
   (right column, grouped by day), with a last-updated timestamp bottom-right.
 - **news** — Hacker News top 5, headlines only, five fixed-height slots.
-- **quote** — one quote of the day, large and centred, from `quotes.json`.
+- **quote** — one quote of the day, large and centred. Local `quotes.json` by
+  default, or (optionally) one real attributed quote fetched from Gemini once a
+  day and cached, with automatic fallback to local. See "Daily quote" below.
 
 All three render on a 1448x1072 landscape canvas, quantized to 16 grey levels
 (no dithering), then rotated to 1072x1448 portrait on write.
@@ -60,6 +62,23 @@ Slots may repeat, e.g. `["day.png", "news.png", "day.png", "quote.png"]`.
 
 `[display].rotate` is `90` or `270`. Which one depends on the side you want the
 USB-C port. Verified on-device in Phase 2, step 4.
+
+## Daily quote (optional Gemini)
+
+By default the quote screen uses `quotes.json`, picked deterministically by date.
+Set `[quote].use_gemini = true` and a `gemini_api_key` in `config.toml` to instead
+ask Google Gemini once per day for a real, attributed quote:
+
+- The result is cached to `quote_cache.json` (gitignored), keyed by date, so the
+  renderer makes **exactly one API call per day** no matter how often it runs.
+- On any failure (no key, network, safety block, bad JSON) it falls back to the
+  local `quotes.json` pick — the screen never blanks.
+- `gemini_model` defaults to `gemini-2.5-flash`. `[quote].prompt` is optional and
+  supports a `{date}` placeholder; leave it unset to use the built-in prompt.
+
+The render log line shows the source, e.g. `quotes ok [gemini]`, `[cache]`, or
+`[local]`. Get a key at https://aistudio.google.com/apikey and treat it as a
+password.
 
 ## Deploy on the Mac Mini (launchd)
 
