@@ -18,7 +18,7 @@ from zoneinfo import ZoneInfo
 
 from . import config, render
 from .screens import day, news, quote
-from .sources import calendar, hn, quotes, weather
+from .sources import calendar, football, hn, quotes, weather
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT_DIR = ROOT / "out"
@@ -55,6 +55,10 @@ def run(cfg: config.Config, preview: bool) -> None:
     w = weather.fetch(cfg.latitude, cfg.longitude, cfg.timezone)
     c = calendar.fetch_days(cfg.ics_url, cfg.timezone, num_days=3)
     hnews = hn.fetch()
+    fixture = None
+    if cfg.football_enabled:
+        fixture = football.fetch(cfg.football_team_id, cfg.football_team_name,
+                                 cfg.timezone, cfg.football_api_key)
     q, q_source = quotes.quote_of_day(
         now.date(),
         use_gemini=cfg.quote_use_gemini,
@@ -68,9 +72,11 @@ def run(cfg: config.Config, preview: bool) -> None:
     print(_status("calendar", c))
     print(_status("hn", hnews))
     print(_status("quotes", q) + f"  [{q_source}]")
+    if fixture is not None:
+        print(_status("football", fixture))
 
     images = {
-        "day.png": day.render_screen(w, c, now),
+        "day.png": day.render_screen(w, c, now, football=fixture),
         "news.png": news.render_screen(hnews),
         "quote.png": quote.render_screen(q),
     }

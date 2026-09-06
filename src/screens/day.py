@@ -15,6 +15,7 @@ from .. import render
 from ..render import text, truncate
 from ..sources import CANT_FETCH, Result
 from ..sources.calendar import DayAgenda
+from ..sources.football import Match
 from ..sources.weather import Weather
 from ..theme import (
     CANVAS_H,
@@ -64,7 +65,7 @@ def _section_rule(draw, y: int) -> None:
     render.hrule(draw, y, WX0, WX0 + WCOL_W, fill=RULE, width=1)
 
 
-def _draw_weather(draw, w: Weather) -> None:
+def _draw_weather(draw, w: Weather, football: "Result[Match] | None" = None) -> None:
     small = font(SIZE_SMALL)
     small_b = font(SIZE_SMALL, bold=True)
 
@@ -103,21 +104,39 @@ def _draw_weather(draw, w: Weather) -> None:
         text(draw, (WX0 + WCOL_W, y), d.condition, font=small, fill=INK_MUTED, anchor="ra")
         y += SIZE_SMALL + 14
 
-    if not w.hourly:
-        return
-
-    y += 8
-    _section_rule(draw, y)
-    y += 18
-
-    # Hourly strip: upcoming hours, stacked.
-    text(draw, (WX0, y), "Next hours", font=small_b, fill=INK_MUTED)
-    y += SIZE_SMALL + 12
-    for h in w.hourly:
-        text(draw, (WX0, y), h.label, font=small_b, fill=INK)
-        text(draw, (WX0 + 130, y), f"{h.temp}°", font=small, fill=INK_MUTED)
-        text(draw, (WX0 + WCOL_W, y), h.condition, font=small, fill=INK_MUTED, anchor="ra")
+    if w.hourly:
+        y += 8
+        _section_rule(draw, y)
+        y += 18
+        # Hourly strip: upcoming hours, stacked.
+        text(draw, (WX0, y), "Next hours", font=small_b, fill=INK_MUTED)
         y += SIZE_SMALL + 12
+        for h in w.hourly:
+            text(draw, (WX0, y), h.label, font=small_b, fill=INK)
+            text(draw, (WX0 + 130, y), f"{h.temp}°", font=small, fill=INK_MUTED)
+            text(draw, (WX0 + WCOL_W, y), h.condition, font=small, fill=INK_MUTED, anchor="ra")
+            y += SIZE_SMALL + 12
+
+    # Next football fixture (optional region).
+    if football is None:
+        return
+    y += 10
+    _section_rule(draw, y)
+    y += 16
+    text(draw, (WX0, y), "Next match", font=small_b, fill=INK_MUTED)
+    y += SIZE_SMALL + 8
+    if football.ok:
+        m = football.value
+        line = f"{'vs' if m.is_home else 'at'} {m.opponent}"
+        text(draw, (WX0, y), truncate(font(SIZE_BODY, bold=True), line, WCOL_W),
+             font=font(SIZE_BODY, bold=True), fill=INK)
+        y += SIZE_BODY + 6
+        text(draw, (WX0, y), m.start.strftime("%a %d %b · %H:%M"), font=small, fill=INK)
+        y += SIZE_SMALL + 4
+        if m.league:
+            text(draw, (WX0, y), truncate(small, m.league, WCOL_W), font=small, fill=INK_MUTED)
+    else:
+        text(draw, (WX0, y), CANT_FETCH, font=font(SIZE_BODY, bold=True), fill=INK_MUTED)
 
 
 def _draw_agenda(draw, days: list[DayAgenda]) -> None:
@@ -169,11 +188,11 @@ def _draw_agenda(draw, days: list[DayAgenda]) -> None:
 
 
 def render_screen(weather: Result[Weather], calendar: Result[list[DayAgenda]],
-                  now: datetime) -> Image.Image:
+                  now: datetime, football: "Result[Match] | None" = None) -> Image.Image:
     img, draw = render.new_canvas()
 
     if weather.ok:
-        _draw_weather(draw, weather.value)
+        _draw_weather(draw, weather.value, football)
     else:
         _cant_fetch(draw, WX0, WX0 + WCOL_W, CANVAS_H // 2)
 

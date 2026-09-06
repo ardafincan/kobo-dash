@@ -44,6 +44,11 @@ class Config:
     gemini_api_key: str
     gemini_model: str
     quote_prompt: str
+    # Next football fixture on the day screen (optional; TheSportsDB).
+    football_enabled: bool
+    football_team_id: str
+    football_team_name: str
+    football_api_key: str
 
 
 def _require(d: dict, path: str):
@@ -85,6 +90,12 @@ def load(path: Path | None = None) -> Config:
     gemini_model = str(quote.get("gemini_model", "gemini-2.5-flash")).strip()
     quote_prompt = str(quote.get("prompt", DEFAULT_QUOTE_PROMPT))
 
+    fb = raw.get("football") if isinstance(raw.get("football"), dict) else {}
+    football_enabled = bool(fb.get("enabled", False))
+    football_team_id = str(fb.get("team_id", "")).strip()
+    football_team_name = str(fb.get("team_name", "")).strip()
+    football_api_key = str(fb.get("api_key", "3")).strip()
+
     return Config(
         ics_url=str(_require(raw, "calendar.ics_url")),
         latitude=float(_require(raw, "location.latitude")),
@@ -98,6 +109,10 @@ def load(path: Path | None = None) -> Config:
         gemini_api_key=gemini_api_key,
         gemini_model=gemini_model,
         quote_prompt=quote_prompt,
+        football_enabled=football_enabled,
+        football_team_id=football_team_id,
+        football_team_name=football_team_name,
+        football_api_key=football_api_key,
     )
 
 

@@ -40,3 +40,11 @@ gemini_api_key = ""
 gemini_model = "gemini-2.5-flash"
 # Optional. Leave unset to use the built-in prompt. {date} is filled in.
 # prompt = "Give me one real, accurately attributed quotation ... for {date}."
+
+[football]
+# Show a team's next fixture on the day screen (via TheSportsDB, free key).
+# Find team_id at: https://www.thesportsdb.com/api/v1/json/3/searchteams.php?t=NAME
+enabled = false
+team_id = "133794"      # Beşiktaş
+team_name = "Beşiktaş"  # used to resolve home/away
+api_key = "3"           # TheSportsDB free public key
