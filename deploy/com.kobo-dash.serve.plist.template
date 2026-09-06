@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.kobo-dash.serve</string>
+
+    <!-- Serve out/ over plain HTTP, bound explicitly to the LAN IP so it is
+         not exposed on any other interface. -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>@UV@</string>
+        <string>run</string>
+        <string>--project</string>
+        <string>@DIR@</string>
+        <string>python</string>
+        <string>-m</string>
+        <string>http.server</string>
+        <string>@PORT@</string>
+        <string>--bind</string>
+        <string>@HOST@</string>
+        <string>--directory</string>
+        <string>@DIR@/out</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>@DIR@</string>
+
+    <key>KeepAlive</key>
+    <true/>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>@DIR@/logs/serve.log</string>
+    <key>StandardErrorPath</key>
+    <string>@DIR@/logs/serve.log</string>
+</dict>
+</plist>

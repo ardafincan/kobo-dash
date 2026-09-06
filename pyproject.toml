@@ -1,0 +1,12 @@
+[project]
+name = "kobo-dash"
+version = "0.1.0"
+description = "E-ink dashboard renderer for a Kobo Clara 2E (server side)"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "icalendar>=7.3.0",
+    "pillow>=12.3.0",
+    "python-dateutil>=2.9.0.post0",
+    "requests>=2.34.2",
+]

@@ -1,0 +1,10 @@
+# Secrets and generated output
+config.toml
+out/
+preview/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.python-version

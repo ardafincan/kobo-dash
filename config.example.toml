@@ -1,0 +1,30 @@
+# Kobo Dashboard configuration — template.
+# Copy to config.toml and fill in real values. config.toml is gitignored.
+
+[calendar]
+# Google Calendar PRIVATE iCal address (Calendar settings -> "Secret address
+# in iCal format"). This is NOT the API. There is no OAuth and no token to
+# expire. TREAT THIS URL AS A PASSWORD.
+ics_url = "https://calendar.google.com/calendar/ical/EXAMPLE/private-EXAMPLE/basic.ics"
+
+[location]
+latitude = 41.0082
+longitude = 28.9784
+
+# IANA timezone string used for weather, calendar day filtering, and timestamps.
+timezone = "Europe/Istanbul"
+
+[display]
+# Output rotation. FBInk sees a portrait framebuffer; we draw landscape and
+# rotate on write. 90 or 270 depending on which side you want the USB-C port.
+# This is verified on-device in Phase 2, step 4.
+rotate = 90
+
+# The display rotation. The DEVICE reads this from manifest.json, so changing
+# it here (then re-rendering) needs no redeploy to the reader. Slots may repeat.
+sequence = ["day.png", "news.png", "day.png", "quote.png"]
+
+[server]
+# LAN IP of the Mac Mini that serves out/ and runs the render timer.
+host = "192.168.1.2"
+port = 8080
